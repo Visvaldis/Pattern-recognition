@@ -8,6 +8,30 @@ def resize(img, percent):
     dim = (width, height) 
     return cv2.resize(img, dim, interpolation = cv2.INTER_AREA) 
 
+def get_metrics(origin, frameToDetect, threshold = 0.8):
+    akaze = cv2.AKAZE_create()
+    kp_origin, des_origin = akaze.detectAndCompute(origin, None)
+    kp_frame, des_frame = akaze.detectAndCompute(frameToDetect, None)
+
+    # Feature matching
+    index_params = dict(algorithm=0, trees=5)
+    search_params = dict()
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+    matches = flann.knnMatch(np.asarray(des_origin,np.float32),np.asarray(des_frame,np.float32), 2)
+    good_points = []
+
+    localization_error = 0
+    for m, n in matches:
+        localization_error += m.distance
+        if m.distance < threshold * n.distance:
+            good_points.append(m)
+
+    localization_error /= len(matches)
+    relative_num_of_correct_features  = len(good_points) / len(matches)
+    return relative_num_of_correct_features, localization_error
+
+
 
 def get_match_Flann(origin, frameToDetect, threshold = 0.8):
     akaze = cv2.AKAZE_create()
@@ -57,11 +81,15 @@ img1 = cv2.imread(file1, cv2.IMREAD_GRAYSCALE)
 for i in range(1, file_count+1):
     file2 = "photo/book"+str(i)+".jpg"
     img2 = resize(cv2.imread(file2, cv2.IMREAD_GRAYSCALE), 15)
-    good_points, kp_origin, kp_frameToDetect = get_match_Flann(img1, img2)
-    detect_obj, isDetected = homography(good_points, kp_origin, kp_frameToDetect, img1, img2)
-    match = cv2.drawMatches(img1, kp_origin, detect_obj, kp_frameToDetect, good_points, None, flags=2)
 
-    cv2.imwrite("out/result"+str(i) +"_" + ("detected" if isDetected else "undefined")  + ".jpg", match)
+    #good_points, kp_origin, kp_frameToDetect = get_match_Flann(img1, img2)
+    #detect_obj, isDetected = homography(good_points, kp_origin, kp_frameToDetect, img1, img2)
+
+    relative_num_of_correct_features, localization_error = get_metrics(img1, img2)
+    print(relative_num_of_correct_features, "\t", localization_error)
+
+    #match = cv2.drawMatches(img1, kp_origin, detect_obj, kp_frameToDetect, good_points, None, flags=2)
+    #cv2.imwrite("out/result"+str(i) +"_" + ("detected" if isDetected else "undefined")  + ".jpg", match)
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
