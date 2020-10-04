@@ -42,9 +42,9 @@ def homography(good_points, kp_origin, kp_frameToDetect, origin, frameToDetect):
 
         frameToDetect = cv2.cvtColor(frameToDetect, cv2.COLOR_GRAY2BGR)
         homography = cv2.polylines(frameToDetect, [np.int32(dst)], True, (0, 255, 0), 3)
-        return homography
+        return homography, True
     else:
-        return frameToDetect
+        return frameToDetect, False
 
 
 
@@ -58,10 +58,10 @@ for i in range(1, file_count+1):
     file2 = "photo/book"+str(i)+".jpg"
     img2 = resize(cv2.imread(file2, cv2.IMREAD_GRAYSCALE), 15)
     good_points, kp_origin, kp_frameToDetect = get_match_Flann(img1, img2)
-    detect_obj = homography(good_points, kp_origin, kp_frameToDetect, img1, img2)
+    detect_obj, isDetected = homography(good_points, kp_origin, kp_frameToDetect, img1, img2)
     match = cv2.drawMatches(img1, kp_origin, detect_obj, kp_frameToDetect, good_points, None, flags=2)
 
-    cv2.imwrite("out/result"+str(i) + ".jpg", match)
+    cv2.imwrite("out/result"+str(i) +"_" + ("detected" if isDetected else "undefined")  + ".jpg", match)
 
 cv2.waitKey(0)
 cv2.destroyAllWindows()
