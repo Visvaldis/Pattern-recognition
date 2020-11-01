@@ -34,15 +34,20 @@ def get_video_from_youtube(url):
     capture.open(best.url)
     return capture
 
-file = 'video.mp4'
+#local file
+file = 'banana.mp4'
+
+#youtube video url
 #url = "https://www.youtube.com/watch?v=zsQTq0eE0Sc"
+#youtube stream url
 url = "https://www.youtube.com/watch?v=5qap5aO4i9A"
+
 res = np.array([])
 print("--- get_frames_array() ---")
 start_time = time.time()
 
-#capture = cv2.VideoCapture(file)
-capture = get_video_from_youtube(url)
+capture = cv2.VideoCapture(file)
+#capture = get_video_from_youtube(url)
 
 #res = get_frames_array(capture)
 show_video(capture)
