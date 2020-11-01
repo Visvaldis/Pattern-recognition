@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import os
+import time
+import pandas as pd
 
 def resize(img, percent):
     width = int(img.shape[1] * percent / 100)
@@ -9,7 +11,10 @@ def resize(img, percent):
     return cv2.resize(img, dim, interpolation = cv2.INTER_AREA) 
 
 def get_metrics(origin, frameToDetect, threshold = 0.8):
+
     akaze = cv2.AKAZE_create()
+
+    start = time.time()
     kp_origin, des_origin = akaze.detectAndCompute(origin, None)
     kp_frame, des_frame = akaze.detectAndCompute(frameToDetect, None)
 
@@ -26,11 +31,11 @@ def get_metrics(origin, frameToDetect, threshold = 0.8):
         localization_error += m.distance
         if m.distance < threshold * n.distance:
             good_points.append(m)
-
+    t = time.time() - start
     localization_error /= len(matches)
     relative_num_of_correct_features  = len(good_points) / len(matches)
-    return relative_num_of_correct_features, localization_error
 
+    return relative_num_of_correct_features, localization_error, t
 
 
 def get_match_Flann(origin, frameToDetect, threshold = 0.8):
@@ -71,26 +76,47 @@ def homography(good_points, kp_origin, kp_frameToDetect, origin, frameToDetect):
         return frameToDetect, False
 
 
-
-_, __, files = next(os.walk("photo"))
+scores = {
+    'm1': [], # відносна к-сть прав суміщ ознак
+    'm2': [], # похибка локалізації
+    'm3': [], # час
+}
+names = []
+_, __, files = next(os.walk("goose_cup"))
 file_count = len(files)
 
-file1 = "origin.jpg"
-img1 = cv2.imread(file1, cv2.IMREAD_GRAYSCALE)
+file1 = "goose_cup/origin.jpg"
+img1 = resize(cv2.imread(file1, cv2.IMREAD_GRAYSCALE), 50)
 
-for i in range(1, file_count+1):
-    file2 = "photo/book"+str(i)+".jpg"
-    img2 = resize(cv2.imread(file2, cv2.IMREAD_GRAYSCALE), 15)
+#file2 = "2.jpg"
+#img2 = resize(cv2.imread(file2, cv2.IMREAD_GRAYSCALE), 50)
+#good_points, kp_origin, kp_frameToDetect = get_match_Flann(img1, img2)
+#detect_obj, isDetected = homography(good_points, kp_origin, kp_frameToDetect, img1, img2)
+#match = cv2.drawMatches(img1, kp_origin, detect_obj, kp_frameToDetect, good_points, None, flags=2)
+#cv2.imshow("out/result_" + ("detected" if isDetected else "undefined")  + ".jpg", match)
 
-    #good_points, kp_origin, kp_frameToDetect = get_match_Flann(img1, img2)
-    #detect_obj, isDetected = homography(good_points, kp_origin, kp_frameToDetect, img1, img2)
+for i in range(1, file_count):
+    try:
+        file2 = "goose_cup/goose"+str(i)+".jpg"
+        img2 = resize(cv2.imread(file2, cv2.IMREAD_GRAYSCALE), 15)
 
-    relative_num_of_correct_features, localization_error = get_metrics(img1, img2)
-    print(relative_num_of_correct_features, "\t", localization_error)
+        good_points, kp_origin, kp_frameToDetect = get_match_Flann(img1, img2)
+        detect_obj, isDetected = homography(good_points, kp_origin, kp_frameToDetect, img1, img2)
 
-    #match = cv2.drawMatches(img1, kp_origin, detect_obj, kp_frameToDetect, good_points, None, flags=2)
-    #cv2.imwrite("out/result"+str(i) +"_" + ("detected" if isDetected else "undefined")  + ".jpg", match)
+        #relative_num_of_correct_features, localization_error, times = get_metrics(img1, img2)
+        #print(relative_num_of_correct_features, "\t", localization_error)
+        #scores['m1'].append(relative_num_of_correct_features)
+        #scores['m2'].append(localization_error)
+        #scores['m3'].append(times)
+        #names.append(file2[:-4])
+        match = cv2.drawMatches(img1, kp_origin, detect_obj, kp_frameToDetect, good_points, None, flags=2)
+        cv2.imwrite("out_olya/result"+str(i) +"_" + ("detected" if isDetected else "undefined")  + ".jpg", match)
+    except:
+        print("skip")
+        continue
 
+#scores_df = pd.DataFrame(scores, index=names)
+#scores_df.to_csv('olya_metrics.csv')
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
